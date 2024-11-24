@@ -22,5 +22,11 @@ pipeline {
             sh 'npm install'
 
         }
+
+        stage('Build container'){
+            steps {
+                docker.build 'test'
+            }
+        }
     }
 }
