@@ -20,30 +20,14 @@ ppipeline {
                 sh 'npm install'
             }
         }
-        stage('Build artifact') {
+        stage('Build artifact'){
             steps {
-                sh 'docker build -t myapp:latest .'
-            }
-        }
-        stage('Push artifact') {
-            environment {
-                DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
-            }
-            steps {
-                withDockerRegistry(credentialsId: DOCKER_CREDENTIALS_ID) {
-                    sh 'docker tag myapp:latest username/myapp:latest'
-                    sh 'docker push username/myapp:latest'
+                script{
+                    docker.build('testbuild')
+                    sh 'docker run -d -p 3000:80 --name test_env testbuild'
+                    sh 'docker login'
+                    sh 'docker push 11502188/devoops:'
                 }
             }
         }
-        stage('Deployment') {
-            steps {
-                sh '''
-                docker stop myapp || true
-                docker rm myapp || true
-                docker run -d -p 3000:3000 --name myapp username/myapp:latest
-                '''
-            }
-        }
-    }
 }
