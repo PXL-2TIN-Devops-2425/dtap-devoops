@@ -2,6 +2,7 @@ pipeline {
     agent any
     tools {
         nodejs "testenvnode"
+        docker "docker_test"
     }
     stages {
         stage ('cleanup'){
@@ -25,7 +26,7 @@ pipeline {
 
         stage('Build container'){
             steps {
-                sh 'docker build -t test'
+                docker.build 'test'
             }
         }
     }
