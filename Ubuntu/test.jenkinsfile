@@ -28,9 +28,9 @@ pipeline {
         }
         stage('Push Artifact') {
             steps {
-                script {
+                withCredentials([usernamePassword(credentialsId: 'DockerFabian', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh '''
-                    docker login
+                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                     docker push 11502188/devoops:testbuild
                     '''
                 }
