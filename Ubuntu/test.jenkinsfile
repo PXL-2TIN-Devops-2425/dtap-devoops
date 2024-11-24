@@ -7,10 +7,6 @@ pipeline {
         stage('Cleanup') {
             steps {
                 deleteDir()
-                sh '''
-                docker stop test_container
-                docker container remove test_container
-                '''
             }
         }
         stage('Fetch App Code') {
