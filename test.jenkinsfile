@@ -1,17 +1,26 @@
 pipeline {
     agent any
-  
+    tools {
+        nodejs "testenvnode"
+    }
     stages {
         stage ('cleanup'){
             steps{
                 deleteDir()
             }
         }
+        
         stage('fetch app code') {
             steps {
                 // Get some code from a GitHub repository
                 git branch: 'main', url: 'https://github.com/PXL-2TIN-DevOps-Resources/calculator-app-finished.git'
             }
+        }
+
+        stage('Install dependencies'){
+
+            sh 'npm install'
+
         }
     }
 }
