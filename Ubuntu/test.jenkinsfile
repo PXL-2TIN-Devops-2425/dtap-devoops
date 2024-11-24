@@ -7,9 +7,17 @@ pipeline {
         stage('Cleanup') {
             steps {
                 deleteDir()
-                sh '''
-                docker images -q --filter "dangling=true" | xargs --no-run-if-empty docker rmi || true
-                '''
+                script {
+                    sh '''
+                    if [ $(docker images -q 11502188/devoops:testbuild) ]; then
+                        docker rmi -f 11502188/devoops:testbuild
+                    fi
+                    if [ $(docker ps -q --filter "name=test_container") ]; then
+                        docker stop test_container
+                        docker rm test_container
+                    fi
+                    '''
+                }
             }
         }
         stage('Fetch App Code') {
