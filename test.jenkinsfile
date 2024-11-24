@@ -25,7 +25,7 @@ pipeline {
 
         stage('Build container'){
             steps {
-                docker.build 'test'
+                sh 'docker build -t test'
             }
         }
     }
