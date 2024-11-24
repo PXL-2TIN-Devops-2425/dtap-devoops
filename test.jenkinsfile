@@ -27,14 +27,11 @@ pipeline {
         stage('Build artifact'){
             steps {
                 script{
+
                     docker.build('testbuild')
-                    sh 'docker run -d -p 3000:80 --name test_env testbuild'
-                    sh 'docker login'
-                    sh 'docker push 11502188/devoops:'
+                    sh 'docker run -d -p 3000:80 --name test_env testbuild bash'
                 }
             }
         }
-
-        
     }
 }

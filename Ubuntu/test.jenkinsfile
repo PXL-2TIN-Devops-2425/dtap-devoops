@@ -22,7 +22,7 @@ pipeline {
         stage('Build Artifact') {
             steps {
                 script {
-                    docker.build('11502188/devoops:testbuild') // Gebruik een unieke tag zoals 'testbuild'
+                    docker.build('11502188/devoops:testbuild')
                 }
             }
         }
