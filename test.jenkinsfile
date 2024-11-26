@@ -7,9 +7,11 @@ pipeline {
     stages {
         stage ('cleanup'){
             steps{
-                sh 'docker stop $(docker container ls -aq)'
-                sh 'docker rmi -f $(docker images -q)'
-                sh 'docker rm -fv $(docker container ls -aq)'
+                sh '''
+                docker stop $(docker container ls -aq)
+                docker rmi -f $(docker images -q)
+                docker rm -fv $(docker container ls -aq)
+                '''
                 deleteDir()
             }
         }
@@ -17,7 +19,7 @@ pipeline {
         stage('fetch app code') {
             steps {
                 // Get some code from a GitHub repository
-                git branch: 'main', url: 'https://github.com/PXL-2TIN-DevOps-Resources/calculator-app-finished.git'
+                git branch: 'main', url: 'https://github.com/YentelMichielsPXL/calculator-app-finished.git'
             }
         }
 
