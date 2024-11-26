@@ -37,7 +37,7 @@ pipeline {
                 script{
 
                     docker.build('11502188/calculator:latest')
-                    sh 'docker run -d -p 3000:3000 --name test_env 11502188/calculator'
+                    //sh 'docker run -d -p 3000:3000 --name test_env 11502188/calculator'
                 }
             }
         }
@@ -52,6 +52,15 @@ pipeline {
                         '''
                     }
 
+            }
+        }
+
+        stage('Deployment'){
+            steps {
+                script{
+                    docker.pull('11502188/calculator:latest')
+                    docker.run('-d --name test_env -p 3000:3000 11502188/calulator:latest')
+                }
             }
         }
     }
