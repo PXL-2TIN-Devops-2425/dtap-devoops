@@ -7,6 +7,7 @@ pipeline {
     stages {
         stage ('cleanup'){
             steps{
+                sh 'docker rm -fv $(docker container ls -aq)'
                 deleteDir()
             }
         }
@@ -28,8 +29,8 @@ pipeline {
             steps {
                 script{
 
-                    docker.build('testbuild')
-                    sh 'docker run -d -p 3000:80 --name test_env testbuild bash'
+                    docker.build('calculator')
+                    sh 'docker run -d -p 3000:80 --name test_env calculator bash'
                 }
             }
         }
