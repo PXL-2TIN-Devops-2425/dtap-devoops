@@ -12,8 +12,8 @@ pipeline {
                     if [ $(docker images -q 11502188/devoops:testbuild) ]; then
                         docker rmi -f 11502188/devoops:testbuild
                     fi
-                    if [ $(docker ps -a --filter "name=test_container") ]; then
-                        docker rm -f test_container
+                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                    docker rm -f test_container
                     fi
                     '''
                 }
