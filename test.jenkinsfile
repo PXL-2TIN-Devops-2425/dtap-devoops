@@ -34,7 +34,7 @@ pipeline {
                 script{
 
                     docker.build('11502188/calculator:latest')
-                    sh 'docker run -d -p 3000:80 --name test_env 11502188/calculator'
+                    sh 'docker run -d -p 3000:3000 --name test_env 11502188/calculator'
                 }
             }
         }
