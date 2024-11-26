@@ -58,7 +58,7 @@ pipeline {
         stage('Deployment'){
             steps {
                 sh 'docker pull 11502188/calculator:latest'
-                sh 'docker run -d -p 3000:3000 --name test_env 11502188/calulator'
+                sh 'docker run -d -p 3000:3000 --name test_env 11502188/calculator'
             }
         }
     }
