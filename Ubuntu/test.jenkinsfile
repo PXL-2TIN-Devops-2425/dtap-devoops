@@ -12,8 +12,9 @@ pipeline {
                     if [ $(docker images -q 11502188/devoops:testbuild) ]; then
                         docker rmi -f 11502188/devoops:testbuild
                     fi
-                    if [ $(docker ps -q --filter "name=test_container") ]; then
-                        docker rm -fv $(docker container ls -aq)
+                    if [ $(docker ps -a --filter "name=test_container") ]; then
+                        docker stop test_container
+                        docker rm test_container
                     fi
                     '''
                 }
