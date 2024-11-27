@@ -15,22 +15,25 @@ pipeline {
             steps {
                 sshagent(['prodserverSSH']) {
                     sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 << 'EOF'
-                    # Cleanup Docker image and container if they exist
-                    if docker images -q 11502188/devoops:testbuild > /dev/null 2>&1; then
-                        echo "Removing Docker image 11502188/devoops:testbuild..."
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "
+                    # Cleanup Docker image if it exists
+                    IMAGE_ID=$(docker images -q 11502188/devoops:testbuild)
+                    if [ ! -z \\\"$IMAGE_ID\\\" ]; then
+                        echo \\\"Removing Docker image 11502188/devoops:testbuild...\\\"
                         docker rmi -f 11502188/devoops:testbuild
                     else
-                        echo "Docker image 11502188/devoops:testbuild does not exist."
+                        echo \\\"Docker image 11502188/devoops:testbuild does not exist.\\\"
                     fi
 
-                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
-                        echo "Removing existing container test_container..."
+                    # Cleanup Docker container if it exists
+                    CONTAINER_ID=$(docker ps -a --filter \\\"name=test_container\\\" --format \\\"{{.ID}}\\\")
+                    if [ ! -z \\\"$CONTAINER_ID\\\" ]; then
+                        echo \\\"Removing container test_container...\\\"
                         docker rm -f test_container
                     else
-                        echo "No container named test_container found."
+                        echo \\\"No container named test_container found.\\\"
                     fi
-                    EOF
+                    "
                     '''
                 }
             }
@@ -39,15 +42,15 @@ pipeline {
             steps {
                 sshagent(['prodserverSSH']) {
                     sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 << 'EOF'
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "
                     # Pull the latest Docker image
-                    echo "Pulling Docker image 11502188/devoops:testbuild..."
+                    echo \\\"Pulling Docker image 11502188/devoops:testbuild...\\\"
                     docker pull 11502188/devoops:testbuild
 
                     # Run the Docker container
-                    echo "Starting Docker container test_container..."
+                    echo \\\"Starting Docker container test_container...\\\"
                     docker run -d -p 80:3000 --restart always --name test_container 11502188/devoops:testbuild
-                    EOF
+                    "
                     '''
                 }
             }
