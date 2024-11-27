@@ -7,7 +7,7 @@ pipeline {
         stage('connect to production') {
             steps {
                 sshagent(['prodserver']) {
-                    sh 'ssh -o StrictHostKeyChecking=no ubuntu@3.87.42.100 ls -alh'
+                    sh 'ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=10 ubuntu@3.87.42.100 ls -alh'
                 }
             }
         }
