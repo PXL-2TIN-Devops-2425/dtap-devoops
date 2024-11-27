@@ -1,7 +1,7 @@
 pipeline {
     agent any
         tools {
-        dockerTool "docker_test"
+        dockerTool "docker_tool"
         }
     stages {
         stage('connect to production') {
