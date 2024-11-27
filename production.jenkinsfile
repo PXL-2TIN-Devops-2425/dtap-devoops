@@ -18,9 +18,9 @@ pipeline {
                 then
                     docker rmi -f 11502188/calculator:latest
                 fi
-                if docker ps -a --filter "name=test_env" --format "{{.Names}}" | grep -q "^test_env$"
+                if docker ps -a --filter "name=prod_env" --format "{{.Names}}" | grep -q "^prod_env$"
                 then
-                    docker rm -f test_env
+                    docker rm -f prod_env
                 fi
                 '''
                 deleteDir()
@@ -29,7 +29,10 @@ pipeline {
         stage('deploy prod'){
             steps {
                 sh 'docker pull 11502188/calculator:latest'
+                sh 'docker run -d -p 80:3000 --name prod_env 11502188/calculator:latest'
             }
         }
+
+    stage('')
     }
 }
