@@ -1,9 +1,9 @@
 pipeline {
     agent any
-        tools {
+    tools {
         dockerTool "docker_tool"
-        }
-     stages {
+    }
+    stages {
         stage('connect to production') {
             steps {
                 sshagent(['prodserverSSH']) {
@@ -11,37 +11,41 @@ pipeline {
                 }
             }
         }
-        stage ('cleanup'){
-            steps{
-                sshagent(['prodserverSSH']) {
-                sh '''
-                if [ $(docker images -q 11502188/devoops:testbuild) ]; then
-                        docker rmi -f 11502188/devoops:testbuild
-                fi
-                if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
-                        docker rm -f test_container
-                fi
-                '''
-                deleteDir()
-                }
-            }
-
-        }
-        stage('deploy prod'){
-            steps {
-                sshagent(['prodserverSSH']) {
-                sh 'docker pull 11502188/devoops:testbuild'
-                sh 'docker run -d -p 80:3000 --name test_container 11502188/devoops:testbuild'
-                }
-            }
-        }
-        stage('start prod') {
+        stage ('cleanup') {
             steps {
                 sshagent(['prodserverSSH']) {
                     sh '''
                     ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 << EOF
-                    # Start de container opnieuw met restart-policy
-                    docker run -d -p 80:3000 --restart always --name test_container 11502188/devoops:testbuild
+                    # Remove old containers and images
+                    if docker images -q 11502188/devoops:testbuild; then
+                        docker rmi -f 11502188/devoops:testbuild
+                    fi
+                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                        docker rm -f test_container
+                    fi
+                    EOF
+                    '''
+                }
+            }
+        }
+        stage('deploy prod') {
+            steps {
+                sshagent(['prodserverSSH']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 << EOF
+                    # Check if any container is using port 80 and stop it
+                    container_id=$(docker ps --filter "publish=80" --format "{{.ID}}")
+                    if [ ! -z "$container_id" ]; then
+                        echo "Stopping container using port 80..."
+                        docker stop $container_id
+                        docker rm $container_id
+                    fi
+
+                    # Pull the latest Docker image
+                    docker pull 11502188/devoops:testbuild
+
+                    # Run the Docker container on port 80
+                    docker run -d -p 80:3000 --name test_container 11502188/devoops:testbuild
                     EOF
                     '''
                 }
@@ -51,15 +55,14 @@ pipeline {
             steps {
                 sshagent(['prodserverSSH']) {
                     script {
-                        // Controleer beschikbaarheid met curl
                         def response = sh(script: '''
                         ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "curl -o /dev/null -s -w '%{http_code}' http://localhost:80"
                         ''', returnStdout: true).trim()
 
                         if (response != '200') {
-                            error("De applicatie is niet beschikbaar! Statuscode: ${response}")
+                            error("Application is not available! Status code: ${response}")
                         } else {
-                            echo "De applicatie is succesvol gedeployed en beschikbaar. Statuscode: ${response}"
+                            echo "Application successfully deployed and accessible. Status code: ${response}"
                         }
                     }
                 }
