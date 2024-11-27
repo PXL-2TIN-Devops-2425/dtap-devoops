@@ -1,83 +1,35 @@
 pipeline {
     agent any
-
-    environment {
-        // Zet hier je servergegevens en containernaam
-        REMOTE_SERVER = "ubuntu@172.31.18.141"
-        CONTAINER_NAME = "your-docker-container-name"
-        IMAGE_NAME = "your-dockerhub-repo/your-image-name"
-        SSH_CREDENTIALS_ID = "your-ssh-credentials-id"
-    }
-
+        tools {
+        dockerTool "docker_test"
+        }
     stages {
-        stage('Deploy Prod') {
+        stage('connect to production') {
             steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                        echo "Pulling the latest Docker image..."
-                        docker pull ${IMAGE_NAME}:latest
-                    '
-                    """
+                sshagent(['prodserver']) {
+                    sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.18.141 ls -alh'
                 }
             }
         }
-
-        stage('Cleanup Prod') {
+        stage ('cleanup'){
+            steps{
+                sh '''
+                if [ $(docker images -q 11502188/calculator:latest) ] 
+                then
+                    docker rmi -f 11502188/calculator:latest
+                fi
+                if docker ps -a --filter "name=test_env" --format "{{.Names}}" | grep -q "^test_env$"
+                then
+                    docker rm -f test_env
+                fi
+                '''
+                deleteDir()
+            }
+        }
+        stage('deploy prod'){
             steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                        echo "Stopping and removing any existing container..."
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm ${CONTAINER_NAME} || true
-                    '
-                    """
-                }
+                sh 'docker pull 11502188/calculator:latest'
             }
-        }
-
-        stage('Start Prod') {
-            steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                        echo "Starting the new container..."
-                        docker run -d --name ${CONTAINER_NAME} -p 80:80 ${IMAGE_NAME}:latest
-                    '
-                    """
-                }
-            }
-        }
-
-        stage('Test Prod') {
-            steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    echo "Testing if the application is running..."
-                    curl -s -o /dev/null -w "%{http_code}" http://${REMOTE_SERVER_IP}:80 | grep 200
-                    """
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                sh """
-                ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                    echo "Cleaning up unused Docker images..."
-                    docker image prune -f
-                '
-                """
-            }
-        }
-        success {
-            echo "Pipeline executed successfully!"
-        }
-        failure {
-            echo "Pipeline failed. Please check the logs for details."
         }
     }
 }
