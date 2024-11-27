@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('connect to production') {
             steps {
-                sshagent(['prodserver']) {
+                sshagent(['prodserverSSH']) {
                     sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.18.141 ls -alh'
                 }
             }
