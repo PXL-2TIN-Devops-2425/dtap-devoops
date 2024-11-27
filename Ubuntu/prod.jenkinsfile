@@ -16,6 +16,15 @@ pipeline {
                 sshagent(['prodserverSSH']) {
                     sh '''
                     ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "
+                    # Cleanup Docker container if it exists
+                    CONTAINER_ID=$(docker ps -a --filter 'name=test_container' --format '{{.ID}}')
+                    if [ ! -z \\\"$CONTAINER_ID\\\" ]; then
+                        echo \\\"Removing container test_container...\\\"
+                        docker rm -f test_container
+                    else
+                        echo \\\"No container named test_container found.\\\"
+                    fi
+
                     # Cleanup Docker image if it exists
                     IMAGE_ID=$(docker images -q 11502188/devoops:testbuild)
                     if [ ! -z \\\"$IMAGE_ID\\\" ]; then
@@ -23,15 +32,6 @@ pipeline {
                         docker rmi -f 11502188/devoops:testbuild
                     else
                         echo \\\"Docker image 11502188/devoops:testbuild does not exist.\\\"
-                    fi
-
-                    # Cleanup Docker container if it exists
-                    CONTAINER_ID=$(docker ps -a --filter \\\"name=test_container\\\" --format \\\"{{.ID}}\\\")
-                    if [ ! -z \\\"$CONTAINER_ID\\\" ]; then
-                        echo \\\"Removing container test_container...\\\"
-                        docker rm -f test_container
-                    else
-                        echo \\\"No container named test_container found.\\\"
                     fi
                     "
                     '''
