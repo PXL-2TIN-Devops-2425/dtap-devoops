@@ -13,6 +13,7 @@ pipeline {
         }
         stage ('cleanup'){
             steps{
+                sshagent(['prodserver']) {
                 sh '''
                 if [ $(docker images -q 11502188/calculator:latest) ] 
                 then
@@ -24,12 +25,16 @@ pipeline {
                 fi
                 '''
                 deleteDir()
+                }
             }
+
         }
         stage('deploy prod'){
             steps {
+                sshagent(['prodserver']) {
                 sh 'docker pull 11502188/calculator:latest'
                 sh 'docker run -d -p 80:3000 --name prod_env 11502188/calculator:latest'
+                }
             }
         }
     }
