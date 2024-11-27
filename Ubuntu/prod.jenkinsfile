@@ -1,68 +1,59 @@
 pipeline {
     agent any
-    tools {
-        dockerTool 'docker_tool'
-    }
-    environment {
-        PROD_SERVER = '3.91.158.12' // Het IP-adres van de productie server
-        DOCKER_IMAGE = '11502188/devoops:latest' // De laatste versie van je container op Docker Hub
-        APP_PORT = '80' // Poort waarop de applicatie draait
-    }
-    stages {
-        stage('Deploy prod') {
+        tools {
+        dockerTool "docker_tool"
+        }
+     stages {
+        stage('connect to production') {
             steps {
                 sshagent(['prodserverSSH']) {
-                    sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@${PROD_SERVER} << EOF
-                    # Zorg ervoor dat Docker geïnstalleerd is
-                    if ! command -v docker &> /dev/null; then
-                        echo "Docker is niet geïnstalleerd. Installeren..."
-                        sudo apt update && sudo apt install -y docker.io
-                    fi
+                    sh 'ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=10 ubuntu@3.91.158.12 ls -alh'
+                }
+            }
+        }
+        stage ('cleanup'){
+            steps{
+                sshagent(['prodserverSSH']) {
+                sh '''
+                if [ $(docker images -q 11502188/devoops:testbuild) ]; then
+                        docker rmi -f 11502188/devoops:testbuild
+                fi
+                if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                        docker rm -f test_container
+                fi
+                '''
+                deleteDir()
+                }
+            }
 
-                    # Download de nieuwste versie van de Docker container
-                    docker pull ${DOCKER_IMAGE}
-                    EOF
-                    '''
+        }
+        stage('deploy prod'){
+            steps {
+                sshagent(['prodserverSSH']) {
+                sh 'docker pull 11502188/devoops:testbuild'
+                sh 'docker run -d -p 80:3000 --name prod_env 11502188/devoops:testbuild'
                 }
             }
         }
-        stage('Cleanup prod') {
+        stage('start prod') {
             steps {
                 sshagent(['prodserverSSH']) {
                     sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@${PROD_SERVER} << EOF
-                    # Verwijder oude containers en images
-                    if docker ps -a --filter "name=prod_env" --format '{{.Names}}' | grep -q "^prod_env$"; then
-                        docker rm -f prod_env
-                    fi
-                    if docker images -q ${DOCKER_IMAGE}; then
-                        docker rmi -f ${DOCKER_IMAGE}
-                    fi
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 << EOF
+                    # Start de container opnieuw met restart-policy
+                    docker run -d -p 80:3000 --restart always --name prod_env 11502188/devoops:testbuild
                     EOF
                     '''
                 }
             }
         }
-        stage('Start prod') {
-            steps {
-                sshagent(['prodserverSSH']) {
-                    sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@${PROD_SERVER} << EOF
-                    # Start de container op poort 80
-                    docker run -d -p ${APP_PORT}:3000 --restart always --name prod_env ${DOCKER_IMAGE}
-                    EOF
-                    '''
-                }
-            }
-        }
-        stage('Test prod') {
+        stage('test prod') {
             steps {
                 sshagent(['prodserverSSH']) {
                     script {
-                        // Test of de applicatie beschikbaar is via curl en controleer op een statuscode 200
+                        // Controleer beschikbaarheid met curl
                         def response = sh(script: '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@${PROD_SERVER} "curl -o /dev/null -s -w '%{http_code}' http://localhost:${APP_PORT}"
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "curl -o /dev/null -s -w '%{http_code}' http://localhost:80"
                         ''', returnStdout: true).trim()
 
                         if (response != '200') {
