@@ -31,7 +31,7 @@ pipeline {
             steps {
                 sshagent(['prodserverSSH']) {
                 sh 'docker pull 11502188/devoops:testbuild'
-                sh 'docker run -d -p 80:3000 --name prod_env 11502188/devoops:testbuild'
+                sh 'docker run -d -p 80:3000 --name test_container 11502188/devoops:testbuild'
                 }
             }
         }
@@ -41,7 +41,7 @@ pipeline {
                     sh '''
                     ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 << EOF
                     # Start de container opnieuw met restart-policy
-                    docker run -d -p 80:3000 --restart always --name prod_env 11502188/devoops:testbuild
+                    docker run -d -p 80:3000 --restart always --name test_container 11502188/devoops:testbuild
                     EOF
                     '''
                 }
