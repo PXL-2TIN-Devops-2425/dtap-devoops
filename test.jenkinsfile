@@ -8,10 +8,12 @@ pipeline {
         stage ('cleanup'){
             steps{
                 sh '''
-                if [ $(docker images -q 11502188/calculator:latest) ]; then
+                if [ $(docker images -q 11502188/calculator:latest) ] 
+                then
                     docker rmi -f 11502188/calculator:latest
                 fi
-                if docker ps -a --filter "name=test_env" --format "{{.Names}}" | grep -q "^test_env$"; then
+                if docker ps -a --filter "name=test_env" --format "{{.Names}}" | grep -q "^test_env$"
+                then
                     docker rm -f test_env
                 fi
                 '''
