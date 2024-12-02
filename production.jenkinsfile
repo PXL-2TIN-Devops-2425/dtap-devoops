@@ -15,7 +15,7 @@ pipeline {
             steps{
                 sshagent(['prodserver']) {
                 sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@54.89.237.233
+                    ssh -o StrictHostKeyChecking=no ubuntu@54.89.237.233 ls-alh "
                     if [ $(docker images -q 11502188/devoops:testbuild) ]
                     then
                         docker rmi -f 11502188/devoops:testbuild
