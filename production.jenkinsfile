@@ -14,7 +14,7 @@ pipeline {
         stage ('cleanup'){
             steps{
                 sshagent(['prodserver']) {
-                    sh 'ssh -o StrictHostKeyChecking=no ubuntu@54.89.237.233 ls-alh'
+                    sh 'ssh -o StrictHostKeyChecking=no ubuntu@54.89.237.233 ls -alh'
                 sh '''
                     if [ $(docker images -q 11502188/devoops:testbuild) ]
                     then
