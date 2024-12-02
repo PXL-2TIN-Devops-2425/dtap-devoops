@@ -20,16 +20,16 @@ pipeline {
                     then
                         docker rmi -f 11502188/devoops:testbuild
                     fi
-                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"
+                    if docker ps -a --filter "name=prod_env" --format '{{.Names}}' | grep -q "^prod_env$"
                     then
-                        docker rm -f test_container
+                        docker rm -f prod_env
                     fi
                     "
                     '''
                 }
             }
-
         }
+        
         stage('deploy prod'){
             steps {
                 sshagent(['prodserver']) {
