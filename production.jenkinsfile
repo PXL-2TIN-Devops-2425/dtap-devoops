@@ -13,8 +13,9 @@ pipeline {
         }
         stage ('cleanup'){
             steps{
-                
+                sshagent(['prodserver']) {
                 sh '''
+                ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=10 ubuntu@54.89.237.233
                 if [ $(docker images -q 11502188/calculator:latest) ] 
                 then
                     docker rmi -f 11502188/calculator:latest
@@ -25,16 +26,20 @@ pipeline {
                 fi
                 '''
                 deleteDir()
-                
+                }
             }
 
         }
         stage('deploy prod'){
             steps {
-                
-                sh 'docker pull 11502188/calculator:latest'
-                sh 'docker run -d -p 80:3000 --name prod_env 11502188/calculator:latest'
-                
+                sshagent(['prodserver']) {
+                sh '''
+                    ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=10 ubuntu@54.89.237.233
+                    docker pull 11502188/calculator:latest
+                    docker run -d -p 80:3000 --name prod_env 11502188/calculator:latest
+                    
+                    '''
+                }
             }
         }
     }
