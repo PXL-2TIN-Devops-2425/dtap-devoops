@@ -46,7 +46,7 @@ pipeline {
         }
         stage('test prod') {
             steps {
-                sh 'curl -o /dev/null -s -w '%{http_code}' 54.80.171.95'
+                sh "curl -o /dev/null -s -w '%{http_code}' 54.80.171.95"
             }
         }
     }
