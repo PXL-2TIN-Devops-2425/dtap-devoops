@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+    tools { 
+        nodejs "TINnode-devops"
+    }
+    stages {
+        stage('Cleanup') {
+            steps {
+                deleteDir()
+                script {
+                    sh '''
+                    if [ $(docker images -q 11502188/devoops:testbuild) ]; then
+                        docker rmi -f 11502188/devoops:testbuild
+                    fi
+                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                        docker rm -f test_container
+                    fi
+                    '''
+                }
+            }
+        }
+        stage('Fetch App Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/PXL-2TIN-DevOps-Resources/calculator-app-finished.git'
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        stage('Build Artifact') {
+            steps {
+                script {
+                    docker.build('11502188/devoops:testbuild')
+                }
+            }
+        }
+        stage('Push Artifact') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'DockerFabian', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    sh '''
+                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                    docker push 11502188/devoops:testbuild
+                    '''
+                }
+            }
+        }
+        stage('Deployment') {
+            steps {
+                script {
+                    sh '''
+                    docker pull 11502188/devoops:testbuild
+                    docker run -d --name test_container -p 3000:3000 11502188/devoops:testbuild
+                    '''
+                }
+            }
+        }
+    }
+}

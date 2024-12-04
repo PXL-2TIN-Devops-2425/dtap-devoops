@@ -1,9 +1,52 @@
 pipeline {
     agent any
+        tools {
+        dockerTool "docker_test"
+        }
     stages {
-        stage('dtap production') {
+        stage ('cleanup') {
             steps {
-                echo "good luck..."
+                sshagent(['prodserver']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@54.80.171.95 "
+                    if [ $(docker images -q 11502188/devoops:testbuild) ]; then
+                        docker rmi -f 11502188/devoops:testbuild
+                    fi
+                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                        docker rm -f test_container
+                    fi
+                    "
+                    '''
+                }
+            }
+        }
+
+        stage('deploy prod') {
+            steps {
+                sshagent(['prodserver']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@54.80.171.95 "
+                    docker pull 11502188/devoops:testbuild
+                    "
+                    '''
+                }
+            }
+        }
+
+        stage('start prod') {
+            steps {
+                sshagent(['prodserver']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@54.80.171.95 "
+                    docker run -d -p 80:3000 --restart always --name test_container 11502188/devoops:testbuild
+                    "
+                    '''
+                }
+            }
+        }
+        stage('test prod') {
+            steps {
+                sh "curl -o /dev/null -s -w '%{http_code}' 54.80.171.95"
             }
         }
     }

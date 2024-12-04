@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+    tools {
+        dockerTool "docker_tool"
+    }
+    stages {
+        stage('connect to production') {
+            steps {
+                sshagent(['prodserverSSH']) {
+                    sh 'ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=10 ubuntu@3.91.158.12 ls -alh'
+                }
+            }
+        }
+        stage ('cleanup') {
+            steps {
+                sshagent(['prodserverSSH']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "
+                    if [ $(docker images -q 11502188/devoops:testbuild) ]; then
+                        docker rmi -f 11502188/devoops:testbuild
+                    fi
+                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                        docker rm -f test_container
+                    fi
+                    "
+                    '''
+                }
+            }
+        }
+        stage('deploy prod') {
+            steps {
+                sshagent(['prodserverSSH']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "
+                
+                    docker pull 11502188/devoops:testbuild
+                    docker run -d -p 80:3000 --restart always --name test_container 11502188/devoops:testbuild
+                    "
+                    '''
+                }
+            }
+        }
+        stage('test prod') {
+            steps {
+                sshagent(['prodserverSSH']) {
+                    script {
+                        def response = sh(script: '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "curl -o /dev/null -s -w '%{http_code}' http://localhost:80"
+                        ''', returnStdout: true).trim()
+
+                        if (response != '200') {
+                            error("Application is not available! Status code: ${response}")
+                        } else {
+                            echo "Application successfully deployed and accessible. Status code: ${response}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
