@@ -1,83 +1,61 @@
 pipeline {
     agent any
-
-    environment {
-        // Zet hier je servergegevens en containernaam
-        REMOTE_SERVER = "ubuntu@172.31.18.141"
-        CONTAINER_NAME = "your-docker-container-name"
-        IMAGE_NAME = "your-dockerhub-repo/your-image-name"
-        SSH_CREDENTIALS_ID = "your-ssh-credentials-id"
+    tools {
+        dockerTool "docker_tool"
     }
-
     stages {
-        stage('Deploy Prod') {
+        stage('connect to production') {
             steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                        echo "Pulling the latest Docker image..."
-                        docker pull ${IMAGE_NAME}:latest
-                    '
-                    """
+                sshagent(['prodserverSSH']) {
+                    sh 'ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=10 ubuntu@3.91.158.12 ls -alh'
                 }
             }
         }
-
-        stage('Cleanup Prod') {
+        stage ('cleanup') {
             steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                        echo "Stopping and removing any existing container..."
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm ${CONTAINER_NAME} || true
-                    '
-                    """
+                sshagent(['prodserverSSH']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "
+                    if [ $(docker images -q 11502188/devoops:testbuild) ]; then
+                        docker rmi -f 11502188/devoops:testbuild
+                    fi
+                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                        docker rm -f test_container
+                    fi
+                    "
+                    '''
                 }
             }
         }
-
-        stage('Start Prod') {
+        stage('deploy prod') {
             steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                        echo "Starting the new container..."
-                        docker run -d --name ${CONTAINER_NAME} -p 80:80 ${IMAGE_NAME}:latest
-                    '
-                    """
+                sshagent(['prodserverSSH']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "
+                
+                    docker pull 11502188/devoops:testbuild
+                    docker run -d -p 80:3000 --restart always --name test_container 11502188/devoops:testbuild
+                    "
+                    '''
                 }
             }
         }
-
-        stage('Test Prod') {
+        stage('test prod') {
             steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh """
-                    echo "Testing if the application is running..."
-                    curl -s -o /dev/null -w "%{http_code}" http://${REMOTE_SERVER_IP}:80 | grep 200
-                    """
+                sshagent(['prodserverSSH']) {
+                    script {
+                        def response = sh(script: '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.91.158.12 "curl -o /dev/null -s -w '%{http_code}' http://localhost:80"
+                        ''', returnStdout: true).trim()
+
+                        if (response != '200') {
+                            error("Application is not available! Status code: ${response}")
+                        } else {
+                            echo "Application successfully deployed and accessible. Status code: ${response}"
+                        }
+                    }
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                sh """
-                ssh -o StrictHostKeyChecking=no ${REMOTE_SERVER} '
-                    echo "Cleaning up unused Docker images..."
-                    docker image prune -f
-                '
-                """
-            }
-        }
-        success {
-            echo "Pipeline executed successfully!"
-        }
-        failure {
-            echo "Pipeline failed. Please check the logs for details."
         }
     }
 }

@@ -7,28 +7,38 @@ pipeline {
         stage('connect to production') {
             steps {
                 sshagent(['prodserver']) {
-                    sh 'ssh -o StrictHostKeyChecking=no ubuntu@3.87.42.100 ls -alh'
+                    sh 'ssh -o StrictHostKeyChecking=no ubuntu@54.89.237.233 ls -alh'
                 }
             }
         }
-        stage ('cleanup'){
-            steps{
-                sh '''
-                if [ $(docker images -q 11502188/calculator:latest) ] 
-                then
-                    docker rmi -f 11502188/calculator:latest
-                fi
-                if docker ps -a --filter "name=test_env" --format "{{.Names}}" | grep -q "^test_env$"
-                then
-                    docker rm -f test_env
-                fi
-                '''
-                deleteDir()
+        stage ('cleanup') {
+            steps {
+                sshagent(['prodserver']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@54.89.237.233 "
+                    if [ $(docker images -q 11502188/devoops:testbuild) ]; then
+                        docker rmi -f 11502188/devoops:testbuild
+                    fi
+                    if docker ps -a --filter "name=test_container" --format '{{.Names}}' | grep -q "^test_container$"; then
+                        docker rm -f test_container
+                    fi
+                    "
+                    '''
+                }
             }
         }
-        stage('deploy prod'){
+
+        stage('deploy prod') {
             steps {
-                sh 'docker pull 11502188/calculator:latest'
+                sshagent(['prodserver']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@54.89.237.233 "
+                
+                    docker pull 11502188/devoops:testbuild
+                    docker run -d -p 80:3000 --restart always --name test_container 11502188/devoops:testbuild
+                    "
+                    '''
+                }
             }
         }
     }
