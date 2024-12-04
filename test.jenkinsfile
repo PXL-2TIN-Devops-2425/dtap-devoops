@@ -23,7 +23,6 @@ pipeline {
         
         stage('fetch app code') {
             steps {
-                // Get some code from a GitHub repository
                 git branch: 'main', url: 'https://github.com/PXL-2TIN-DevOps-Resources/calculator-app-finished.git'
             }
         }
@@ -39,7 +38,6 @@ pipeline {
                 script{
 
                     docker.build('11502188/calculator:latest')
-                    //sh 'docker run -d -p 3000:3000 --name test_env 11502188/calculator'
                 }
             }
         }
